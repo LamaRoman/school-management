@@ -1,0 +1,326 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ───────────────────────────────────────────────────────────────
+// Database Configuration
+// ───────────────────────────────────────────────────────────────
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student Student? // If role is STUDENT
+  teacher Teacher? // If role is TEACHER
+
+  @@map("users")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 2. STUDENT MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Student {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  firstName      String
+  lastName       String
+  dateOfBirth    DateTime
+  gender         Gender
+  rollNumber     Int?      // Roll number within the class
+  admissionDate  DateTime? // Made optional
+  bloodGroup     String?
+  address        String?
+  phone          String?
+  fathersName    String?   // Added
+  mothersName    String?   // Added
+  guardianName   String?
+  guardianPhone  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class      Class?       @relation(fields: [classId], references: [id])
+  classId    String?
+  marks      Mark[]
+  results    Result[]
+  attendance Attendance[]
+
+  @@unique([classId, rollNumber])
+  @@map("students")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 3. TEACHER MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Teacher {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  firstName     String
+  lastName      String
+  dateOfBirth   DateTime
+  gender        Gender
+  joiningDate   DateTime
+  qualification String
+  experience    Int
+  phone         String?
+  address       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects SubjectTeacher[]
+
+  @@map("teachers")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 4. ACADEMIC YEAR MODEL
+// ───────────────────────────────────────────────────────────────
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  classes Class[]
+  exams   Exam[]
+
+  @@map("academic_years")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 5. CLASS MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Class {
+  id             String @id @default(uuid())
+  name           String
+  section        String?
+  academicYearId String
+  capacity       Int    @default(40)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  students     Student[]
+  subjects     Subject[]
+  exams        Exam[]
+
+  @@unique([name, section, academicYearId])
+  @@map("classes")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 6. SUBJECT MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Subject {
+  id           String  @id @default(uuid())
+  name         String
+  code         String? @unique // Made optional
+  classId      String
+  totalMarks   Int     @default(100)
+  passingMarks Int     @default(40)
+  description  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  class    Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teachers SubjectTeacher[]
+  marks    Mark[]
+
+  @@map("subjects")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 7. SUBJECT-TEACHER JUNCTION TABLE
+// ───────────────────────────────────────────────────────────────
+
+model SubjectTeacher {
+  id        String @id @default(uuid())
+  teacherId String
+  subjectId String
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId])
+  @@map("subject_teachers")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 8. EXAM MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Exam {
+  id             String     @id @default(uuid())
+  name           String
+  type           ExamType
+  classId        String
+  academicYearId String
+  startDate      DateTime
+  endDate        DateTime
+  totalMarks     Int        @default(100)
+  passingMarks   Int        @default(40)
+  status         ExamStatus @default(SCHEDULED)
+  description    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  class        Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  marks        Mark[]
+  results      Result[]
+
+  @@map("exams")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 9. MARK MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Mark {
+  id        String  @id @default(uuid())
+  studentId String
+  examId    String
+  subjectId String
+  marks     Float
+  remarks   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, examId, subjectId])
+  @@map("marks")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 10. RESULT MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Result {
+  id          String       @id @default(uuid())
+  studentId   String
+  examId      String
+  totalMarks  Float
+  percentage  Float
+  grade       String
+  rank        Int?
+  status      ResultStatus @default(DRAFT)
+  remarks     String?
+  publishedAt DateTime?
+  publishedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, examId])
+  @@map("results")
+}
+
+// ───────────────────────────────────────────────────────────────
+// 11. ATTENDANCE MODEL
+// ───────────────────────────────────────────────────────────────
+
+model Attendance {
+  id        String           @id @default(uuid())
+  studentId String
+  date      DateTime
+  status    AttendanceStatus
+  remarks   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@map("attendance")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════════
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  UNIT_TEST
+  ASSIGNMENT
+  PROJECT
+  PRACTICAL
+  QUIZ
+}
+
+enum ExamStatus {
+  DRAFT
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum ResultStatus {
+  DRAFT
+  PUBLISHED
+  WITHHELD
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
