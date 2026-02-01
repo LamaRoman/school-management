@@ -9,11 +9,11 @@ const SALT_ROUNDS = 12; // Industry standard
 
 export const hashPassword = async (password) => {
   if (!password || typeof password !== 'string') {
-    throw new Error('Password is required and must be a string');
+    throw new ValidationError('Password is required and must be a string');
   }
   
   if (password.trim() === '') {
-    throw new Error('Password cannot be empty');
+    throw new ValidationError('Password cannot be empty');
   }
   
   return await bcrypt.hash(password, SALT_ROUNDS);
