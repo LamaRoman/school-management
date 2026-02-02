@@ -1,9 +1,9 @@
-import AppError from './AppError.js';
+import { AppError } from './index.js';
 
 export class ValidationError extends AppError {
   constructor(message = 'Validation failed', errors = []) {
     super(message, 400);
-    this.errors = errors; // Array of field-specific errors
+    this.errors = errors;
   }
 }
 
@@ -36,7 +36,6 @@ export class ConflictError extends AppError {
     super(message, 409);
   }
 }
-
 
 export class UnprocessableEntityError extends AppError {
   constructor(message = 'Unprocessable entity') {
